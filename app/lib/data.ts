@@ -176,37 +176,24 @@ export async function fetchFilteredInvoices(
   }
 }
 
-export async function fetchInvoicesPages(filter: InvoiceFilter) {
+export async function fetchInvoicesPages(query: string) {
   await dbConnect();
 
   try {
-    const invoiceFilter: any = {};
-    const customerFilter: any = {};
-
-    if (filter.amount) {
-      invoiceFilter.amount = filter.amount;
-    }
-    if (filter.date) {
-      invoiceFilter.date = { $regex: new RegExp(filter.date, "i") };
-    }
-    if (filter.status) {
-      invoiceFilter.status = { $regex: new RegExp(filter.status, "i") };
-    }
-    if (filter.customerName) {
-      customerFilter.name = { $regex: new RegExp(filter.customerName, "i") };
-    }
-    if (filter.customerEmail) {
-      customerFilter.email = { $regex: new RegExp(filter.customerEmail, "i") };
-    }
-
-    const count = await Invoice.countDocuments(invoiceFilter)
+    const regexQuery = new RegExp(query, "i");
+    const invoices = await Invoice.find({})
       .populate({
         path: "customer",
-        match: customerFilter,
+        match: {
+          $or: [{ name: regexQuery }, { email: regexQuery }],
+        },
+        select: "name email image_url",
       })
       .exec();
-
-    const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
+    const filteredInvoices = invoices.filter(
+      (invoice) => invoice.customer !== null
+    );
+    const totalPages = Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error("Database Error:", error);

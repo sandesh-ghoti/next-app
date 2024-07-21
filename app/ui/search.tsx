@@ -12,6 +12,8 @@ export default function Search({ placeholder }: { placeholder: string }) {
     // take all previous params
     console.log("searching....", term);
     const params = new URLSearchParams(searchParams);
+    // reset page number for every query
+    params.set("page", "1");
     if (term) {
       // add new one
       params.set("query", term);
