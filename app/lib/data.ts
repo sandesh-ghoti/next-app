@@ -3,7 +3,12 @@ import { dbConnect } from "./dbConnect";
 import { Revenue } from "@/models/Revenue";
 import { Invoice, Status } from "@/models/Invoice";
 import { Customer, CustomerDoc } from "@/models/Customer";
-import { InvoicesTable, LatestInvoice } from "./definitions";
+import {
+  CustomerField,
+  InvoiceForm,
+  InvoicesTable,
+  LatestInvoice,
+} from "./definitions";
 
 export async function fetchRevenue() {
   await dbConnect();
@@ -159,8 +164,8 @@ export async function fetchFilteredInvoices(
       .filter((invoice) => invoice.customer !== null)
       .map((invoice): InvoicesTable => {
         return {
-          id: invoice._id as string,
-          customer_id: invoice.customer._id as string,
+          id: invoice.id as string,
+          customer_id: invoice.customer.id as string,
           name: invoice.customer.name,
           email: invoice.customer.email,
           image_url: invoice.customer.image_url,
@@ -205,9 +210,17 @@ export async function fetchInvoiceById(id: string) {
   await dbConnect();
 
   try {
-    const invoice = await Invoice.findById(id);
-
-    return invoice;
+    const invoice = await Invoice.findById(id).populate("customer", "id");
+    if (!invoice) {
+      throw new Error("Invoice not found.");
+    }
+    const inv: InvoiceForm = {
+      id: invoice.id,
+      customer_id: invoice.customer.id,
+      amount: invoice.amount / 100,
+      status: invoice.status,
+    };
+    return inv;
   } catch (error) {
     console.error("Database Error:", error);
     throw new Error("Failed to fetch invoice.");
@@ -221,8 +234,11 @@ export async function fetchCustomers() {
     const customers: CustomerDoc[] = await Customer.find({}, "id name")
       .sort({ name: 1 })
       .exec();
-
-    return customers;
+    const cust = customers.map((customer) => ({
+      id: customer.id,
+      name: customer.name,
+    }));
+    return cust;
   } catch (err) {
     console.error("Database Error:", err);
     throw new Error("Failed to fetch all customers.");
