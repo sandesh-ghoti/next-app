@@ -212,7 +212,7 @@ export async function fetchInvoiceById(id: string) {
   try {
     const invoice = await Invoice.findById(id).populate("customer", "id");
     if (!invoice) {
-      throw new Error("Invoice not found.");
+      return null;
     }
     const inv: InvoiceForm = {
       id: invoice.id,

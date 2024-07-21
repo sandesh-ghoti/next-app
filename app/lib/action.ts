@@ -21,20 +21,25 @@ export async function createInvoice(formData: FormData) {
     amount: formData.get("amount"),
     status: formData.get("status"),
   });
-  const amountInCents = amount * 100;
-  const date = new Date();
-  const customer = await Customer.findById(customerId);
-  if (!customer) {
-    throw new Error("Customer not found");
+  try {
+    const amountInCents = amount * 100;
+    const date = new Date();
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+    const invoice = Invoice.build({
+      customer,
+      amount: amountInCents,
+      status,
+      date,
+    });
+    await invoice.save();
+  } catch (error) {
+    return {
+      message: "Database Error: Failed to Create Invoice.",
+    };
   }
-  const invoice = Invoice.build({
-    customer,
-    amount: amountInCents,
-    status,
-    date,
-  });
-  await invoice.save();
-  console.log(amountInCents, customerId, typeof amount, "date", date);
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
 }
@@ -48,29 +53,41 @@ export async function updateInvoice(id: string, formData: FormData) {
     amount: formData.get("amount"),
     status: formData.get("status"),
   });
-  const amountInCents = amount * 100;
-  const invoice = await Invoice.findById(id);
-  if (!invoice) {
-    throw new Error("Invoice not found");
+  try {
+    const amountInCents = amount * 100;
+    const invoice = await Invoice.findById(id);
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+    invoice.customer = customer;
+    invoice.amount = amountInCents;
+    invoice.status = status;
+    await invoice.save();
+  } catch (error) {
+    return {
+      message: "Database Error: Failed to Update Invoice.",
+    };
   }
-  const customer = await Customer.findById(customerId);
-  if (!customer) {
-    throw new Error("Customer not found");
-  }
-  invoice.customer = customer;
-  invoice.amount = amountInCents;
-  invoice.status = status;
-  await invoice.save();
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
 }
 
 export async function deleteInvoice(id: string) {
-  const invoice = await Invoice.findById(id);
-  if (!invoice) {
-    throw new Error("Invoice not found");
+  try {
+    const invoice = await Invoice.findById(id);
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+    await invoice.deleteOne();
+    revalidatePath("/dashboard/invoices");
+    return { message: "Deleted Invoice." };
+  } catch (error) {
+    return {
+      message: "Database Error: Failed to Delete Invoice.",
+    };
   }
-  await invoice.deleteOne();
-  revalidatePath("/dashboard/invoices");
-  redirect("/dashboard/invoices");
 }
