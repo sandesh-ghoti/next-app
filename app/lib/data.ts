@@ -1,7 +1,7 @@
 import { formatCurrency } from "./utils";
 import { dbConnect } from "./dbConnect";
 import { Revenue } from "@/models/Revenue";
-import { Invoice } from "@/models/Invoice";
+import { Invoice, Status } from "@/models/Invoice";
 import { Customer, CustomerDoc } from "@/models/Customer";
 import { InvoicesTable, LatestInvoice } from "./definitions";
 
@@ -9,7 +9,7 @@ export async function fetchRevenue() {
   await dbConnect();
   try {
     console.log("Fetching revenue data...");
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // await new Promise((resolve) => setTimeout(resolve, 3000));
     const data = await Revenue.find({});
     console.log("Data fetch completed after 3 seconds.");
     return data;
@@ -101,35 +101,53 @@ export interface InvoiceFilter {
   status?: string;
 }
 const ITEMS_PER_PAGE = 6;
+/**
+ * this function only supporting searching base on customer field data
+ * @param query to search invoices by customer field data
+ * @param currentPage
+ * @returns
+ */
 export async function fetchFilteredInvoices(
-  filter: InvoiceFilter,
+  query: string,
   currentPage: number
 ) {
   await dbConnect();
 
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-  const invoiceFilter: any = {};
-  const customerFilter: any = {};
+  const regexQuery = new RegExp(query, "i"); // case-insensitive regex
+  // let amountQuery = {};
+  // let dateQuery = {};
+  // let statusQuery = {};
+  // // Try to parse query as number for amount search
+  // const amount = parseFloat(query);
+  // if (!isNaN(amount)) {
+  //   amountQuery = { amount: amount };
+  // }
+
+  // // Try to parse query as date for date search
+  // const date = new Date(query);
+  // if (!isNaN(date.getTime())) {
+  //   // Search for invoices on the same day
+  //   const nextDay = new Date(date);
+  //   nextDay.setDate(date.getDate() + 1);
+  //   dateQuery = {
+  //     date: { $gte: date, $lt: nextDay },
+  //   };
+  // }
+  // if (regexQuery.test(Status.PAID) || regexQuery.test(Status.PENDING)) {
+  //   statusQuery = {
+  //     status: regexQuery.test(Status.PAID) ? Status.PAID : Status.PENDING,
+  //   };
+  // }
   try {
-    if (filter.amount) {
-      invoiceFilter.amount = filter.amount;
-    }
-    if (filter.date) {
-      invoiceFilter.date = { $regex: new RegExp(filter.date, "i") };
-    }
-    if (filter.status) {
-      invoiceFilter.status = { $regex: new RegExp(filter.status, "i") };
-    }
-    if (filter.customerName) {
-      customerFilter.name = { $regex: new RegExp(filter.customerName, "i") };
-    }
-    if (filter.customerEmail) {
-      customerFilter.email = { $regex: new RegExp(filter.customerEmail, "i") };
-    }
-    const invoices = await Invoice.find(invoiceFilter)
+    const invoices = await Invoice.find({
+      // $or: [amountQuery, dateQuery, statusQuery],
+    })
       .populate({
         path: "customer",
-        match: customerFilter,
+        match: {
+          $or: [{ name: regexQuery }, { email: regexQuery }],
+        },
         select: "name email image_url",
       })
       .sort({ date: -1 })
