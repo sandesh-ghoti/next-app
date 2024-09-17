@@ -4,6 +4,8 @@ import { Invoice, Status } from "@/models/Invoice";
 import { Customer } from "@/models/Customer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { signIn } from "@/auth";
+import { AuthError } from "next-auth";
 
 const FormSchema = z.object({
   id: z.string(),
@@ -111,5 +113,27 @@ export async function deleteInvoice(id: string) {
     return {
       message: "Database Error: Failed to Delete Invoice.",
     };
+  }
+}
+
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData
+) {
+  try {
+    // we have handled form validation at auth.ts
+    await signIn("credentials", formData);
+  } catch (error) {
+    console.log("gettting CredentialsSignin error");
+    if (error instanceof AuthError) {
+      console.log("is it Auth error instance", error.type);
+      switch (error.type) {
+        case "CredentialsSignin":
+          return "Invalid credentials.";
+        default:
+          return "Something went wrong.";
+      }
+    }
+    throw error;
   }
 }

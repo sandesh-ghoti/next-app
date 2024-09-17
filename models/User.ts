@@ -1,6 +1,5 @@
 import { Password } from "@/app/lib/passwordEncryptDecrypt";
-import mongoose, { mongo } from "mongoose";
-import { use } from "react";
+import mongoose from "mongoose";
 
 interface IUser {
   name: string;
